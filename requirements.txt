@@ -1,0 +1,11 @@
+diffusers==0.35.2
+imageio==2.37.2
+imageio-ffmpeg
+numpy==2.4.6
+peft==0.18.0
+safetensors==0.7.0
+tqdm==4.67.1
+transformers
+accelerate
+huggingface_hub
+opencv-python
