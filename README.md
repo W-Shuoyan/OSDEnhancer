@@ -48,7 +48,7 @@ The pretrained checkpoint is available below.
 |---|---|---|
 | OSDEnhancer-v1.0 | [CogVideoX1.5-5B](https://huggingface.co/zai-org/CogVideoX1.5-5B) | [🤗 Hugging Face](https://huggingface.co/W-Shuoyan/OSDEnhancer) |
 
-By default, the inference script automatically loads the checkpoint from Hugging Face. If you want to use a local checkpoint, organize it as follows and specify `--ckpt_path`.
+By default, the inference script automatically loads the checkpoint from Hugging Face. For local checkpoint loading, the checkpoint directory should be organized as follows:
 
 ```text
 ckpt/
@@ -74,11 +74,10 @@ Run OSDEnhancer on an input video:
 python inference.py \
   --input demo/input.mp4 \      # Path to the input MP4 video
   --output demo/output.mp4 \    # Path to save the enhanced MP4 video
-  --ckpt_path ckpt \            # Path to the pretrained checkpoint directory
   --spatial_scale 4 \           # Spatial upsampling scale
   --temporal_scale 2            # Temporal upsampling scale
 ```
-We recommend setting `spatial_scale = 4` and `temporal_scale = 2`. For long videos or high-resolution inputs, enable chunk-based inference by additionally setting `--chunk_length` and `--overlap`, where `--chunk_length` should satisfy the form of `8N+1`.
+We recommend setting `spatial_scale = 4` and `temporal_scale = 2`. To use a local checkpoint, specify `--ckpt_path`. For long videos or high-resolution inputs, enable chunk-based inference by additionally setting `--chunk_length` and `--overlap`, where `--chunk_length` should satisfy the form of `8N+1`.
 
 ## 📧 Contact
 
