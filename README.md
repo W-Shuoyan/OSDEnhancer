@@ -72,10 +72,10 @@ Run OSDEnhancer on an input video:
 
 ```bash
 python inference.py \
-  --input demo/input.mp4 \      # Path to the input MP4 video
-  --output demo/output.mp4 \    # Path to save the enhanced MP4 video
-  --spatial_scale 4 \           # Spatial upsampling scale
-  --temporal_scale 2            # Temporal upsampling scale
+  --input demo/input.mp4 \
+  --output demo/output.mp4 \
+  --spatial_scale 4 \
+  --temporal_scale 2
 ```
 We recommend setting `spatial_scale = 4` and `temporal_scale = 2`. To use a local checkpoint, specify `--ckpt_path`. For long videos or high-resolution inputs, enable chunk-based inference by additionally setting `--chunk_length` and `--overlap`, where `--chunk_length` should satisfy the form of `8N+1`.
 
