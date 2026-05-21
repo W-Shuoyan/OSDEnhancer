@@ -77,7 +77,7 @@ python inference.py \
   --spatial_scale 4 \
   --temporal_scale 2
 ```
-We recommend setting `spatial_scale = 4` and `temporal_scale = 2`. To use a local checkpoint, specify `--ckpt_path`. For long videos or high-resolution inputs, enable chunk-based inference by additionally setting `--chunk_length` and `--overlap`, where `--chunk_length` should satisfy the form of `8N+1`.
+For stable inference, we recommend using a GPU with **not less than 80GB of VRAM**. We recommend setting `spatial_scale = 4` and `temporal_scale = 2`. To use a local checkpoint, specify `--ckpt_path`. For long videos or high-resolution inputs, enable chunk-based inference by additionally setting `--chunk_length` and `--overlap`, where `--chunk_length` should satisfy the form of `8N+1`.
 
 ## 📧 Contact
 
