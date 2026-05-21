@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import os
+from pathlib import Path
+from huggingface_hub import snapshot_download
 from typing import Dict, Tuple, Union, Optional
 from tqdm import tqdm
 
@@ -42,47 +43,80 @@ class OSDEnhancerPipeline(DiffusionPipeline):
         pretrained_model_name_or_path: str,
         torch_dtype: torch.dtype = torch.bfloat16,
         device: str = "cuda",
-        local_files_only: bool = True,
+        local_files_only: bool = False,
     ):
-        device = torch.device("cuda")
+        device = torch.device(device if torch.cuda.is_available() else "cpu")
+
         print("[Load] OSDEnhancerPipeline loading...")
+        print(f"[Load] checkpoint: {pretrained_model_name_or_path}")
+        print(f"[Load] device={device}, dtype={torch_dtype}")
+
+        input_path = Path(pretrained_model_name_or_path)
+
+        if input_path.is_dir():
+            ckpt_path = input_path
+            print(f"[Load] Using local checkpoint: {ckpt_path}")
+        else:
+            print("[Load] Downloading checkpoint from Hugging Face Hub...")
+            ckpt_path = Path(
+                snapshot_download(
+                    repo_id=pretrained_model_name_or_path,
+                    local_files_only=local_files_only,
+                    allow_patterns=[
+                        "scheduler/*",
+                        "vae/*",
+                        "transformer/*",
+                        "prompt_embeddings/*",
+                    ],
+                )
+            )
+            print(f"[Load] Checkpoint cached at: {ckpt_path}")
 
         scheduler = CogVideoXDPMScheduler.from_pretrained(
-            pretrained_model_name_or_path,
+            ckpt_path,
             subfolder="scheduler",
-            local_files_only=local_files_only,
+            local_files_only=True,
         )
         print("[Load] Scheduler loading finished.")
 
         vae = AutoencoderKLCogVideoX_STVSR.from_pretrained(
-            pretrained_model_name_or_path,
+            ckpt_path,
             subfolder="vae",
             torch_dtype=torch_dtype,
-            local_files_only=local_files_only,
+            local_files_only=True,
         )
+
         for p in vae.parameters():
             p.requires_grad = False
+
         vae.to(device=device)
+
         for m in vae.modules():
             if isinstance(m, DCNv2Pack):
                 m.to(dtype=torch.float32)
-        vae.eval() 
+
+        vae.eval()
         print("[Load] VAE loading finished.")
 
         transformer = CogVideoXTransformer3D_STVSR_Model.from_pretrained(
-            ckpt_path=os.path.join(pretrained_model_name_or_path, "transformer")
+            ckpt_path=ckpt_path / "transformer"
         )
+
         for p in transformer.parameters():
             p.requires_grad = False
+
         transformer.to(device=device, dtype=torch_dtype)
         transformer.eval()
         print("[Load] Transformer loading finished.")
 
-        prompt_embedding = load_file(os.path.join(pretrained_model_name_or_path, "prompt_embeddings/empty.safetensors"))["prompt_embedding"]
+        prompt_embedding_path = ckpt_path / "prompt_embeddings" / "empty.safetensors"
+
+        prompt_embedding = load_file(str(prompt_embedding_path))["prompt_embedding"]
         prompt_embedding = prompt_embedding.to(
             device=device,
             dtype=torch_dtype,
         ).unsqueeze(0).contiguous()
+
         print("[Load] Prompt embedding loading finished.")
 
         pipe = cls(
@@ -90,10 +124,12 @@ class OSDEnhancerPipeline(DiffusionPipeline):
             transformer=transformer,
             scheduler=scheduler,
         )
+
         pipe.prompt_embedding = prompt_embedding
         pipe.to(device)
+
         print("[Load] OSDEnhancerPipeline loading finished.")
-        
+
         return pipe
     
     def get_resize_crop_region_for_grid(self, src, tgt_width, tgt_height):

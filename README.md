@@ -1,4 +1,4 @@
-# Taming Real-World Space-Time Video Super-Resolution with One-Step Diffusion (arXiv 2026)
+# [OSDEnhancer] Taming Real-World Space-Time Video Super-Resolution with One-Step Diffusion (arXiv 2026)
 
 **Authors**: [Shuoyan Wei](https://github.com/W-Shuoyan)<sup>1</sup>, [Feng Li](https://lifengcs.github.io/)<sup>2,\*</sup>, Chen Zhou<sup>1</sup>, [Runmin Cong](https://rmcong.github.io)<sup>3</sup>, [Yao Zhao](https://scholar.google.com/citations?user=474TbQYAAAAJ&hl=en&oi=ao)<sup>1</sup>, [Huihui Bai](https://scholar.google.com/citations?user=iXuCUcQAAAAJ&hl=en&oi=ao)<sup>1</sup>
 

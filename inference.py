@@ -3,7 +3,6 @@ from pathlib import Path
 
 import imageio.v3 as iio
 import torch
-import numpy as np
 
 from pipeline.OSDEnhancer_pipeline import OSDEnhancerPipeline
 
@@ -45,16 +44,25 @@ def save_mp4(video: torch.Tensor, path: str, fps: float):
     )
 
 
+HF_REPO_ID = "W-Shuoyan/OSDEnhancer"
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--input", type=str)
-    parser.add_argument("--output", type=str)
+    parser.add_argument("--input", type=str, required=True)
+    parser.add_argument("--output", type=str, required=True)
 
     parser.add_argument("--spatial_scale", type=float, default=4.0)
     parser.add_argument("--temporal_scale", type=int, default=2)
 
-    parser.add_argument("--ckpt_path", type=str, default="ckpt")
+    parser.add_argument(
+        "--ckpt_path",
+        type=str,
+        default=None,
+        help="Local checkpoint path. If not specified, load from Hugging Face.",
+    )
+
     parser.add_argument("--chunk_num", type=int, default=None)
     parser.add_argument("--overlap", type=int, default=None)
 
@@ -68,11 +76,20 @@ def main():
 
     lq_video, input_fps = read_mp4(args.input)
 
+    if args.ckpt_path is None:
+        ckpt_path = HF_REPO_ID
+        local_files_only = False
+        print(f"[Load] No local checkpoint specified. Loading from Hugging Face: {ckpt_path}")
+    else:
+        ckpt_path = args.ckpt_path
+        local_files_only = True
+        print(f"[Load] Loading local checkpoint from: {ckpt_path}")
+
     pipe = OSDEnhancerPipeline.from_pretrained(
-        args.ckpt_path,
+        ckpt_path,
         torch_dtype=torch.bfloat16,
         device=device,
-        local_files_only=True,
+        local_files_only=local_files_only,
     )
 
     lq_video = lq_video.to(device=device, dtype=torch.float32)
