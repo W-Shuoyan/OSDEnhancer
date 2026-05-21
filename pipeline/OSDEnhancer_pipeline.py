@@ -302,7 +302,7 @@ class OSDEnhancerPipeline(DiffusionPipeline):
         input: torch.Tensor,
         spatial_scale: Union[int, float] = 4,
         temporal_scale: int = 2,
-        chunk_num: Optional[int] = None,
+        chunk_length: Optional[int] = None,
         overlap: Optional[int] = None,
     ):
         base_transformer = getattr(self.transformer, "module", self.transformer)
@@ -337,25 +337,17 @@ class OSDEnhancerPipeline(DiffusionPipeline):
         starts = [0]
         prev_ed = None
 
-        use_chunk = chunk_num is not None
+        use_chunk = chunk_length is not None
 
         if use_chunk:
-            assert chunk_num >= 1, "chunk_num must be >= 1"
+            assert chunk_length >= 1, "chunk_length must be >= 1"
+            assert (chunk_length - 1) % 8 == 0, "chunk_length must satisfy 8N+1, e.g., 9, 17, 25, ..."
+            
             overlap = 1 if overlap is None else overlap
             assert overlap >= 0, "overlap must be >= 0"
+            assert overlap < chunk_length, "overlap must be smaller than chunk_length"
 
-            if chunk_num == 1:
-                base_len = T_all
-            else:
-                raw_len = (T_all + (chunk_num - 1) * overlap + chunk_num - 1) // chunk_num
-                N = max(1, (raw_len - 1 + 7) // 8)
-                base_len = 8 * N + 1
-                base_len = min(base_len, T_all)
-
-            assert (base_len - 1) % 8 == 0 or base_len == T_all, \
-                "chunk length must satisfy 8N+1"
-
-            assert overlap < base_len, "overlap must be smaller than chunk length"
+            base_len = min(chunk_length, T_all)
 
             starts = [0]
 
@@ -393,19 +385,19 @@ class OSDEnhancerPipeline(DiffusionPipeline):
         for ci, st in iterator:
             ed = min(st + base_len, T_all)
 
-            lq_chunk = init[:, st:ed, ...]
-            rw_chunk = res[:, st:ed, ...]
+            init_chunk = init[:, st:ed, ...]
+            res_chunk = res[:, st:ed, ...]
 
-            lq_chunk = (lq_chunk * 2 - 1).to(device, dtype=base_vae.dtype)
-            lq_chunk = lq_chunk.permute(0, 2, 1, 3, 4).contiguous()
-            lq_chunk, pads = self.pad_to_multiple(lq_chunk)
+            init_chunk = (init_chunk * 2 - 1).to(device, dtype=base_vae.dtype)
+            init_chunk = init_chunk.permute(0, 2, 1, 3, 4).contiguous()
+            init_chunk, pads = self.pad_to_multiple(init_chunk)
 
-            rw_chunk = rw_chunk.to(device, dtype=base_vae.dtype)
-            rw_chunk = rw_chunk.permute(0, 2, 1, 3, 4).contiguous()
-            rw_chunk, _ = self.pad_to_multiple(rw_chunk)
+            res_chunk = res_chunk.to(device, dtype=base_vae.dtype)
+            res_chunk = res_chunk.permute(0, 2, 1, 3, 4).contiguous()
+            res_chunk, _ = self.pad_to_multiple(res_chunk)
 
             timesteps = torch.full(
-                (lq_chunk.shape[0],),
+                (init_chunk.shape[0],),
                 399,
                 device=device,
                 dtype=torch.long,
@@ -413,35 +405,35 @@ class OSDEnhancerPipeline(DiffusionPipeline):
 
             print("[Status] VAE encoding...")
 
-            lq_latent = base_vae.encode(lq_chunk).latent_dist.sample()
-            lq_latent = lq_latent * vae_config.scaling_factor
-            lq_latent = lq_latent.to(dtype=dtype).permute(0, 2, 1, 3, 4).contiguous()
+            init_latent = base_vae.encode(init_chunk).latent_dist.sample()
+            init_latent = init_latent * vae_config.scaling_factor
+            init_latent = init_latent.to(dtype=dtype).permute(0, 2, 1, 3, 4).contiguous()
 
-            rw_latent = base_vae.encode(rw_chunk).latent_dist.sample()
-            rw_latent = rw_latent * vae_config.scaling_factor
-            rw_latent = rw_latent.to(dtype=dtype).permute(0, 2, 1, 3, 4).contiguous()
+            res_latent = base_vae.encode(res_chunk).latent_dist.sample()
+            res_latent = res_latent * vae_config.scaling_factor
+            res_latent = res_latent.to(dtype=dtype).permute(0, 2, 1, 3, 4).contiguous()
 
-            del lq_chunk, rw_chunk
+            del init_chunk, res_chunk
             torch.cuda.empty_cache()
 
             patch_size_t = transformer_config.patch_size_t
             ncopy = 0
 
             if patch_size_t is not None:
-                ncopy = (patch_size_t - (lq_latent.shape[1] % patch_size_t)) % patch_size_t
+                ncopy = (patch_size_t - (init_latent.shape[1] % patch_size_t)) % patch_size_t
 
                 if ncopy > 0:
-                    lq_latent = torch.cat(
+                    init_latent = torch.cat(
                         [
-                            lq_latent[:, :1].repeat(1, ncopy, 1, 1, 1),
-                            lq_latent
+                            init_latent[:, :1].repeat(1, ncopy, 1, 1, 1),
+                            init_latent
                         ],
                         dim=1
                     )
-                    rw_latent = torch.cat(
+                    res_latent = torch.cat(
                         [
-                            rw_latent[:, :1].repeat(1, ncopy, 1, 1, 1),
-                            rw_latent
+                            res_latent[:, :1].repeat(1, ncopy, 1, 1, 1),
+                            res_latent
                         ],
                         dim=1
                     )
@@ -450,9 +442,9 @@ class OSDEnhancerPipeline(DiffusionPipeline):
 
             rotary_emb = (
                 self.prepare_rotary_positional_embeddings(
-                    height=lq_latent.shape[3] * vae_scale_factor_spatial,
-                    width=lq_latent.shape[4] * vae_scale_factor_spatial,
-                    num_frames=lq_latent.shape[1],
+                    height=init_latent.shape[3] * vae_scale_factor_spatial,
+                    width=init_latent.shape[4] * vae_scale_factor_spatial,
+                    num_frames=init_latent.shape[1],
                     transformer_config=transformer_config,
                     vae_scale_factor_spatial=vae_scale_factor_spatial,
                     device=device,
@@ -464,9 +456,9 @@ class OSDEnhancerPipeline(DiffusionPipeline):
             print("[Status] DiT inference...")
 
             predicted_noise = base_transformer(
-                hidden_states=lq_latent,
+                hidden_states=init_latent,
                 encoder_hidden_states=self.prompt_embedding,
-                res_hidden_states=rw_latent,
+                res_hidden_states=res_latent,
                 timestep=timesteps,
                 image_rotary_emb=rotary_emb,
                 return_dict=False,
@@ -474,11 +466,11 @@ class OSDEnhancerPipeline(DiffusionPipeline):
 
             latent_pred = self.scheduler.get_velocity(
                 predicted_noise,
-                lq_latent,
+                init_latent,
                 timesteps
             )
 
-            del predicted_noise, lq_latent, rw_latent
+            del predicted_noise, init_latent, res_latent
             torch.cuda.empty_cache()
 
             if patch_size_t is not None and ncopy > 0:
@@ -490,26 +482,26 @@ class OSDEnhancerPipeline(DiffusionPipeline):
 
             print("[Status] VAE decoding...")
 
-            sq = base_vae.decode(latent_pred).sample.to(torch.float32)
+            out = base_vae.decode(latent_pred).sample.to(torch.float32)
 
-            sq = self.unpad_from_multiple(sq, pads)
-            sq = sq.permute(0, 2, 1, 3, 4).contiguous()
-            sq = (sq * 0.5 + 0.5).clamp(0, 1)
+            out = self.unpad_from_multiple(out, pads)
+            out = out.permute(0, 2, 1, 3, 4).contiguous()
+            out = (out * 0.5 + 0.5).clamp(0, 1)
 
             if prev_ed is not None:
                 drop = max(0, prev_ed - st)
                 if drop > 0:
-                    sq = sq[:, drop:, ...]
+                    out = out[:, drop:, ...]
 
-            outputs.append(sq.cpu())
+            outputs.append(out.cpu())
             prev_ed = ed
 
-            del latent_pred, sq
+            del latent_pred, out
             torch.cuda.empty_cache()
 
-        sq = torch.cat(outputs, dim=1)
+        outputs = torch.cat(outputs, dim=1)
 
-        B_out, T_out, C_out, H_out, W_out = sq.shape
+        B_out, T_out, C_out, H_out, W_out = outputs.shape
         print(f"[Output] frames={T_out}, height={H_out}, width={W_out}.")
 
-        return sq
+        return outputs

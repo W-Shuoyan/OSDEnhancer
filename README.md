@@ -41,13 +41,15 @@ pip install -r requirements.txt
 ## 🚀 Usage
 
 ### Pretrained Checkpoints
-Download the pretrained checkpoint below.
-| Model Name| Base Model | Download Link 🔗|
+
+The pretrained checkpoint is available below.
+
+| Model Name | Base Model | Download Link 🔗 |
 |---|---|---|
 | OSDEnhancer-v1.0 | [CogVideoX1.5-5B](https://huggingface.co/zai-org/CogVideoX1.5-5B) | [🤗 Hugging Face](https://huggingface.co/W-Shuoyan/OSDEnhancer) |
 
+By default, the inference script automatically loads the checkpoint from Hugging Face. If you want to use a local checkpoint, organize it as follows and specify `--ckpt_path`.
 
-The checkpoint directory should be organized as follows:
 ```text
 ckpt/
 ├── transformer/
@@ -76,7 +78,7 @@ python inference.py \
   --spatial_scale 4 \           # Spatial upsampling scale
   --temporal_scale 2            # Temporal upsampling scale
 ```
-We recommend setting `spatial_scale = 4` and `temporal_scale = 2`. For long videos or high-resolution inputs, enable chunk-based inference by additionally setting `--chunk_num` and `--overlap`, where `--chunk_num` should satisfy the form of `8N+1`.
+We recommend setting `spatial_scale = 4` and `temporal_scale = 2`. For long videos or high-resolution inputs, enable chunk-based inference by additionally setting `--chunk_length` and `--overlap`, where `--chunk_length` should satisfy the form of `8N+1`.
 
 ## 📧 Contact
 

@@ -63,7 +63,7 @@ def parse_args():
         help="Local checkpoint path. If not specified, load from Hugging Face.",
     )
 
-    parser.add_argument("--chunk_num", type=int, default=None)
+    parser.add_argument("--chunk_length", type=int, default=None)
     parser.add_argument("--overlap", type=int, default=None)
 
     return parser.parse_args()
@@ -99,7 +99,7 @@ def main():
             input=lq_video,
             spatial_scale=args.spatial_scale,
             temporal_scale=args.temporal_scale,
-            chunk_num=args.chunk_num,
+            chunk_length=args.chunk_length,
             overlap=args.overlap,
         )
 
