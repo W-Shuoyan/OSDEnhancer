@@ -23,7 +23,8 @@ OSDEnhancer begins with a linear initialization to establish essential spatiotem
 
 ## 🔈News
 
-- ✅ **[May 2026]** The inference code and pretrained checkpoints are now available 👉 [![GitHub Stars](https://img.shields.io/github/stars/W-Shuoyan/OSDEnhancer?style=social)](https://github.com/W-Shuoyan/OSDEnhancer) [![Hugging Face](https://img.shields.io/badge/🤗-%20Hugging%20Face-yellow)](https://huggingface.co/W-Shuoyan/OSDEnhancer)
+- 📌 **[Jun 2026]** We made an important checkpoint fix on Hugging Face to correct the VAE config and Transformer LoRA key names. To reproduce the results reported in our paper, **please use the latest checkpoint files** 👉 [![Hugging Face](https://img.shields.io/badge/🤗-%20Hugging%20Face-yellow)](https://huggingface.co/W-Shuoyan/OSDEnhancer)
+- ✅ **[May 2026]** The inference code and pretrained checkpoints are now available 👉 [![GitHub Stars](https://img.shields.io/github/stars/W-Shuoyan/OSDEnhancer?style=social)](https://github.com/W-Shuoyan/OSDEnhancer)
 - ✅ **[Jan 2026]** The arXiv version of our paper has been released 👉 [![arXiv](https://img.shields.io/badge/arXiv-2601.20308-da282a)](https://arxiv.org/abs/2601.20308)
 
 
@@ -41,6 +42,8 @@ pip install -r requirements.txt
 ## 🚀 Usage
 
 ### Pretrained Checkpoints
+
+> **Important Note:** On June 25, 2026, we updated the Hugging Face checkpoint files to correct the VAE config and Transformer LoRA key names. To reproduce the results reported in our paper, please use the latest checkpoint files from Hugging Face.
 
 The pretrained checkpoint is available below.
 

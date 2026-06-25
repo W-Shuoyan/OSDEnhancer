@@ -89,7 +89,7 @@ class OSDEnhancerPipeline(DiffusionPipeline):
         for p in vae.parameters():
             p.requires_grad = False
 
-        vae.to(device=device)
+        vae.to(device=device, dtype=torch_dtype)
 
         for m in vae.modules():
             if isinstance(m, DCNv2Pack):
